@@ -1,10 +1,10 @@
 #pragma once
 
-#include "socketIO.h"
+#include "messenger.h"
 #include <thread>
 
-namespace Messenger {
-    class Client : public SocketIO {
+namespace SimpleMessenger {
+    class Client : public Messenger {
         private:
             std::thread m_listenProcess;
         public:

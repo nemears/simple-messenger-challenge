@@ -2,17 +2,14 @@
 #include "message.h"
 #include "server.h"
 #include <cstring>
-#include <iostream>
 #include <netdb.h>
 #include <thread>
 
-using namespace Messenger;
+using namespace SimpleMessenger;
 
 const std::string initializationError = "Internal error for client when initializing socket!";
 
 Client::Client(std::string& serverAddress) {
-    std::cout << "Client initializing!" << std::endl;
-
     // split serverAdress into host and port
     auto colonIndex = serverAddress.find(":");
     std::string host;
@@ -38,11 +35,13 @@ Client::Client(std::string& serverAddress) {
     // get socket
     int clientSocket = socket(address->ai_family, address->ai_socktype, address->ai_protocol);
     if (clientSocket == -1) {
+        freeaddrinfo(address);
         throw MessengerError(initializationError);
     }
 
     // connect
     if (connect(clientSocket, address->ai_addr, address->ai_addrlen) == -1) {
+        freeaddrinfo(address);
         throw MessengerError(initializationError);
     }
    
@@ -52,10 +51,10 @@ Client::Client(std::string& serverAddress) {
     setSocket(clientSocket);
 
     // start listening in background thread
-    m_listenProcess = std::thread(&SocketIO::listen, this);
+    m_listenProcess = std::thread(&Messenger::listen, this);
 }
 
 void Client::shutdown() {
-    SocketIO::shutdown();
+    Messenger::shutdown();
     m_listenProcess.join();
 }

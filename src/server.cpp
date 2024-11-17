@@ -5,13 +5,11 @@
 #include <netdb.h>
 #include <cstring>
 
-using namespace Messenger;
+using namespace SimpleMessenger;
 
 const std::string initializationMessage = "Could not initialize server, internal socket error!";
 
 Server::Server() {
-    std::cout << "server initializing!" << std::endl; 
-
     // startup server
     // get address info
     struct addrinfo hints;
@@ -27,16 +25,19 @@ Server::Server() {
     // get socket
     m_serverSocket = socket(address->ai_family, address->ai_socktype, address->ai_protocol);
     if (m_serverSocket == -1) {
+        freeaddrinfo(address);
         throw MessengerError(initializationMessage);
     }
 
     // bind to socket
     if (bind(m_serverSocket , address->ai_addr, address->ai_addrlen) < 0) {
+        freeaddrinfo(address);
         throw MessengerError(initializationMessage);
     }
 
     // listen for connections
     if (::listen(m_serverSocket, 10) < 0) {
+        freeaddrinfo(address);
         throw MessengerError(initializationMessage);
     }
 
@@ -55,7 +56,6 @@ void Server::singleClient() {
         m_client = accept(m_serverSocket, (struct sockaddr *)&clientAddress, &addrSize);
         if (m_client == -1) {
             // log error and return
-            log("error accepting client shutting down!");
             m_shuttingDown = true;
             return;
         }
@@ -69,19 +69,10 @@ void Server::singleClient() {
 }
 
 void Server::shutdown() {
-    std::lock_guard<std::mutex> shuttingDownLock(m_shutingDownMtx);
     m_shuttingDown = true;
-    SocketIO::shutdown();
+    Messenger::shutdown();
     close(m_serverSocket);
-    m_shuttingDownCv.notify_all();
     m_singleClientProcess.join();
-}
-
-void Server::waitForShutdown() {
-    std::unique_lock<std::mutex> shuttingDownLock(m_shutingDownMtx);
-    m_shuttingDownCv.wait(shuttingDownLock, [this] {
-        return m_shuttingDown;        
-    });
 }
 
 const std::string noClientError = "server has no client to communicate with!";
@@ -91,5 +82,5 @@ void Server::send(Message& message) {
         throw MessengerError(noClientError);
     }
 
-    SocketIO::send(message);
+    Messenger::send(message);
 }

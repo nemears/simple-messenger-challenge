@@ -11,8 +11,9 @@ set(CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTOR
 include_directories(include)
 
 # library
-add_library(messenger src/server.cpp src/client.cpp src/socketIO.cpp)  
+add_library(messenger src/server.cpp src/client.cpp src/messenger.cpp src/simpleMessenger.cpp)
 
 # executable
 add_executable(simple-messenger src/main.cpp)
 target_link_libraries(simple-messenger PUBLIC messenger)
+target_link_libraries(simple-messenger PRIVATE -fsanitize=address)

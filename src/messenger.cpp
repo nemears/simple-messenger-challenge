@@ -1,25 +1,23 @@
-#include "socketIO.h"
+#include "messenger.h"
 #include <mutex>
 #include <netinet/in.h>
 #include <poll.h>
 
-using namespace Messenger;
+using namespace SimpleMessenger;
 
 const std::string sendErrorMessage = "could not send message!";
 
-void SocketIO::send(Message& message) {
+void Messenger::send(Message& message) {
     // lock mutual exclusion for scope
     std::unique_lock<std::mutex> socketLock(m_socketMutex);
-    socketLock.lock();
-    
-    // std::lock_guard<std::mutex> clientlock(m_socketMutex);
 
     // protocol specifies to send number of bytes in a long first
     // and then read that many bytes into the message buffer
-    uint32_t messageSize = htonl(message.bytes.size());
+    uint32_t messageSize = message.bytes.size();
+    uint32_t messageSizeTranslation = htonl(messageSize);
     auto uint32_tSize = sizeof(uint32_t);
     m_awaitingResponse = true;
-    int sendResult = ::send(m_socket, &messageSize, uint32_tSize, 0);
+    int sendResult = ::send(m_socket, &messageSizeTranslation, uint32_tSize, 0);
     if (sendResult != uint32_tSize) {
         throw MessengerError(sendErrorMessage);
     }
@@ -51,7 +49,7 @@ void SocketIO::send(Message& message) {
 
 const std::string recvErrorMessage = "could not receive mesage!";
 
-void SocketIO::listen() {
+void Messenger::listen() {
     // receive messages
     struct pollfd pfds[1];
     pfds[0].fd = m_socket;
@@ -107,6 +105,14 @@ void SocketIO::listen() {
                         }
                         bytesRead += recvResult;
                     }
+
+                    // send aknowledgement
+                    messageSize = htonl(messageSize);
+                    int sendResult = ::send(m_socket, &messageSize, uint32_tSize, 0);
+                    if (sendResult == -1) {
+                        throw MessengerError(recvErrorMessage);
+                    
+                    }
                     message = Message{ buffer };
                 }
 
@@ -120,7 +126,7 @@ void SocketIO::listen() {
     }
 }
 
-void SocketIO::shutdown() {
+void Messenger::shutdown() {
     std::lock_guard<std::mutex> socketLock(m_socketMutex);
     close(m_socket);
     m_socket = -1;

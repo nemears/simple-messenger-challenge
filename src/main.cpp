@@ -2,10 +2,9 @@
 #include <iostream>
 #include <optional>
 #include <string>
-#include "client.h"
-#include "server.h"
+#include "simpleMessenger.h"
 
-using namespace Messenger;
+using namespace SimpleMessenger;
 
 int main (int argc, char* argv[]) {
     std::optional<std::string> firstArgument = std::nullopt;
@@ -17,10 +16,11 @@ int main (int argc, char* argv[]) {
         if (firstArgument) {
             std::cout << "Connecting to simple-messenger server at address: " << *firstArgument << std::endl;
             Client client(firstArgument.value());
+            simpleMessenger(client);
         } else {
             std::cout << "Running Server on local port " << SERVER_PORT << std::endl;
             Server server;
-            server.waitForShutdown();
+            simpleMessenger(server);
         }
     } catch (std::exception& e) {
         std::cout << e.what();

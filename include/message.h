@@ -5,11 +5,15 @@
 #include <vector>
 #include <string>
 
-namespace Messenger {
+namespace SimpleMessenger {
     struct Message {
         std::vector<uint8_t> bytes;
         std::string string() const {
             return std::string(bytes.begin(), bytes.end()); 
+        }
+        static Message from(std::string& string) {
+            std::vector<uint8_t> bytes(string.begin(), string.end());
+            return Message { bytes };
         }
     };
 
