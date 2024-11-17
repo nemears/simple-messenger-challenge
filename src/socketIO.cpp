@@ -9,7 +9,11 @@ const std::string sendErrorMessage = "could not send message!";
 
 void SocketIO::send(Message& message) {
     // lock mutual exclusion for scope
-    std::lock_guard<std::mutex> clientlock(m_socketMutex);
+    std::unique_lock<std::mutex> socketLock(m_socketMutex);
+    socketLock.lock();
+    
+    // std::lock_guard<std::mutex> clientlock(m_socketMutex);
+
     // protocol specifies to send number of bytes in a long first
     // and then read that many bytes into the message buffer
     uint32_t messageSize = htonl(message.bytes.size());
@@ -28,6 +32,12 @@ void SocketIO::send(Message& message) {
         bytesSent += sendResult;
     }
 
+    // make sure listen is in right state
+    m_socketCv.wait(socketLock, [this] {
+        return m_waitingOnSend;        
+    });
+    m_waitingOnSend = false;
+
     // wait for response from client
     uint8_t responseBuffer = 0;
     int receiveResult = ::recv(m_socket, &responseBuffer, sizeof(uint8_t), 0);
@@ -35,6 +45,7 @@ void SocketIO::send(Message& message) {
         throw MessengerError(sendErrorMessage);
     }
     m_awaitingResponse = false;
+    socketLock.unlock();
     m_socketCv.notify_one();
 }
 
@@ -58,6 +69,10 @@ void SocketIO::listen() {
         if (pfds[0].revents & POLLIN) {
             // data ready to read
             if (m_awaitingResponse) {
+                // let send know we are in state to skip recv and wait for signal from send
+                m_waitingOnSend = true;
+                m_socketCv.notify_one();
+
                 // data being read is response to send call,
                 // wait for send to finish it's operation
                 std::unique_lock<std::mutex> clientLock(m_socketMutex);

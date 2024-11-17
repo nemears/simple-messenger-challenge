@@ -27,11 +27,6 @@ namespace Messenger {
             void singleClient();
         public:
             Server();
-            struct InitializationError : public std::exception {
-                const char* what() const noexcept override {
-                    return "Could not Initialize Server!";
-                }
-            };
             template <typename T>
             void log(T& message) {
                 std::lock_guard<std::mutex> logLock(m_logMtx);

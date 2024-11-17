@@ -1,12 +1,14 @@
 #pragma once
 
-#include <string>
+#include "socketIO.h"
+#include <thread>
 
 namespace Messenger {
-    class Client {
+    class Client : public SocketIO {
         private:
-            std::string m_serverAddress = "";
+            std::thread m_listenProcess;
         public:
             Client(std::string& serverAddress);
+            void shutdown() override;
     };
 }
