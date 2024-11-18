@@ -14,10 +14,12 @@ namespace  SimpleMessenger {
             bool m_awaitingResponse = false;
             bool m_waitingOnSend = false;
             struct AbstractFunctor {
-                 virtual void operator()(Message& message) const = 0;
+                virtual ~AbstractFunctor() {}
+                virtual void operator()(Message& message) const = 0;
             };
             std::unique_ptr<AbstractFunctor> m_onMessageHandler;
         public:
+            virtual ~Messenger() {}
             // send a message
             virtual void send(Message& message);
             // listen for messages until socket is closed

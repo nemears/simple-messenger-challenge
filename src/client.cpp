@@ -9,7 +9,7 @@ using namespace SimpleMessenger;
 
 const std::string initializationError = "Internal error for client when initializing socket!";
 
-Client::Client(std::string& serverAddress) {
+Client::Client(std::string serverAddress) {
     // split serverAdress into host and port
     auto colonIndex = serverAddress.find(":");
     std::string host;

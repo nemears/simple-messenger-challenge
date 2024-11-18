@@ -11,7 +11,7 @@ namespace SimpleMessenger {
         std::string string() const {
             return std::string(bytes.begin(), bytes.end()); 
         }
-        static Message from(std::string& string) {
+        static Message from(std::string string) {
             std::vector<uint8_t> bytes(string.begin(), string.end());
             return Message { bytes };
         }

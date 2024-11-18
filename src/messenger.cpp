@@ -53,12 +53,12 @@ void Messenger::listen() {
     // receive messages
     struct pollfd pfds[1];
     pfds[0].fd = m_socket;
-    pfds[0].events = POLLIN;
+    pfds[0].events = POLLIN;// | POLLERR | POLLHUP;
 
     // message loop
     for(;;) {
-        // poll lets us knowif there is data to be read
-        // or if the socket has been closed or errored
+        // poll lets us know if there is data to be read
+        // or if the socket has been hungup or errored
         int pollResult = poll(pfds, 1, -1);
         if (pollResult == 0) {
             // nothing polled, weird
@@ -90,6 +90,9 @@ void Messenger::listen() {
                     int recvResult = ::recv(m_socket, &messageSize, uint32_tSize, 0);
                     if (recvResult == -1) {
                         throw MessengerError(recvErrorMessage);
+                    } else if (recvResult == 0) {
+                        // socket is closed
+                        break;
                     }
 
                     // run network number conversion just in case
@@ -117,7 +120,9 @@ void Messenger::listen() {
                 }
 
                 // run user defined handlers
-                (*m_onMessageHandler)(message);
+                if (m_onMessageHandler) {
+                    (*m_onMessageHandler)(message);
+                }
             }
         } else {
             // connection is errored or closed, stop processing
