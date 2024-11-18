@@ -47,6 +47,12 @@ Client::Client(std::string serverAddress) {
    
     freeaddrinfo(address);
 
+    // receive aknowledgment signal, state good to start exchanging messages
+    uint8_t initializationSignal;
+    if (::recv(clientSocket, &initializationSignal, sizeof(uint8_t), 0) == -1) {
+        throw MessengerError(initializationError);
+    }
+
     // set socket for SocketIO
     setSocket(clientSocket);
 

@@ -12,8 +12,8 @@ const std::string initializationMessage = "Could not initialize server, internal
 Server::Server() {
     // startup server
     // get address info
-    struct addrinfo hints;
-    struct addrinfo* address;
+    addrinfo hints;
+    addrinfo* address;
     std::memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC; // don't care IPv4 or IPv6
     hints.ai_socktype = SOCK_STREAM; // TCP stream sockets
@@ -60,18 +60,61 @@ void Server::singleClient() {
             return;
         }
 
+        if (m_shuttingDown) {
+            // spoofed client
+            close(m_serverSocket);
+            break;
+        }
+
+        // send aknowledgement
+        uint8_t initSignal = 0;
+        if (::send(m_client, &initSignal, sizeof(uint8_t), 0) == -1) {
+            throw MessengerError("Error aknowledging client acceptance");
+        }
+
         // set the socket
         setSocket(m_client);
 
         // handle messages coming in
         listen();
+        m_client = -1;
     }
 }
 
+const std::string spoofClientError = "Error on shutdown spoofing client";
+
 void Server::shutdown() {
-    m_shuttingDown = true;
     Messenger::shutdown();
-    close(m_serverSocket);
+
+    m_shuttingDown = true;
+
+    // send spoofed client
+    addrinfo hints;
+    addrinfo* address;
+    std::memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC; // don't care IPv4 or IPv6
+    hints.ai_socktype = SOCK_STREAM; // TCP stream sockets
+    hints.ai_flags = AI_PASSIVE; // fill in IP
+    if (getaddrinfo(0, m_port.c_str(), &hints, &address) != 0) {
+        throw MessengerError(spoofClientError);
+    }
+
+    // get socket
+    int clientSocket = socket(address->ai_family, address->ai_socktype, address->ai_protocol);
+    if (clientSocket == -1) {
+        freeaddrinfo(address);
+        throw MessengerError(spoofClientError);
+    }
+
+    // connect
+    if (connect(clientSocket, address->ai_addr, address->ai_addrlen) == -1) {
+        freeaddrinfo(address);
+        throw MessengerError(spoofClientError);
+    }
+
+    freeaddrinfo(address);
+    close(clientSocket);
+
     m_singleClientProcess.join();
 }
 

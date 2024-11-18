@@ -51,9 +51,10 @@ const std::string recvErrorMessage = "could not receive mesage!";
 
 void Messenger::listen() {
     // receive messages
+    // set up poll
     struct pollfd pfds[1];
     pfds[0].fd = m_socket;
-    pfds[0].events = POLLIN;// | POLLERR | POLLHUP;
+    pfds[0].events = POLLIN;
 
     // message loop
     for(;;) {
@@ -77,6 +78,9 @@ void Messenger::listen() {
                 m_socketCv.wait(clientLock, [this] {
                     return !m_awaitingResponse;        
                 });
+            } else if (m_shuttingDown) {
+                // exit message loop
+                break;
             } else {
                 // read message into object
                 Message message;
@@ -97,6 +101,23 @@ void Messenger::listen() {
 
                     // run network number conversion just in case
                     messageSize = ntohl(messageSize);
+
+                    // check if it is a shutdown signal
+                    if (messageSize == 0) {
+                        if (m_shuttingDown) {
+                            // aknowledgment from other messenger of shutdown
+                            // end message loop
+                            close(m_socket);
+                            m_socket = -1;
+                            break;
+                        } else {
+                            // send signal back to confirm shutdown / trigger poll for other messenger
+                            ::send(m_socket, &messageSize, uint32_tSize, 0);
+
+                            // no messenger, no need to listen
+                            break;
+                        }
+                    }
 
                     // receive rest of message
                     std::vector<uint8_t> buffer(messageSize);
@@ -133,6 +154,7 @@ void Messenger::listen() {
 
 void Messenger::shutdown() {
     std::lock_guard<std::mutex> socketLock(m_socketMutex);
-    close(m_socket);
-    m_socket = -1;
+    m_shuttingDown = true;
+    uint8_t shutdownSignal = 0;
+    ::send(m_socket, &shutdownSignal, sizeof(uint8_t), 0);
 }

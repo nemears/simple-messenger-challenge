@@ -10,6 +10,13 @@ TEST(MessengerTests, shutdownTest) {
     server.shutdown();
 }
 
+TEST(MessengerTests, serverShutdownTest) {
+    Server server;
+    Client client("127.0.0.1");
+    server.shutdown();
+    client.shutdown();
+}
+
 std::atomic_bool receivedMessage = false;
 
 TEST(MessengerTests, sendMessage) {

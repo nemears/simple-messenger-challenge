@@ -13,6 +13,7 @@ namespace  SimpleMessenger {
             std::condition_variable m_socketCv;
             bool m_awaitingResponse = false;
             bool m_waitingOnSend = false;
+            bool m_shuttingDown = false;
             struct AbstractFunctor {
                 virtual ~AbstractFunctor() {}
                 virtual void operator()(Message& message) const = 0;
