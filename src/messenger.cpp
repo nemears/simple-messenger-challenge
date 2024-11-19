@@ -1,5 +1,7 @@
 #include "messenger.h"
 #include <netinet/in.h>
+#include <cerrno>
+#include <cstring>
 
 #define SHUTDOWN_SIGNAL 0
 #define MESSAGE_SIGNAL 1
@@ -7,7 +9,7 @@
 
 using namespace SimpleMessenger;
 
-const std::string sendErrorMessage = "could not send message!";
+const std::string sendErrorMessage = "could not send message! ";
 
 void Messenger::send(Message& message) {
     // lock mutual exclusion for scope
@@ -17,7 +19,7 @@ void Messenger::send(Message& message) {
     uint8_t messageSignal = MESSAGE_SIGNAL;
     int sendResult = ::send(m_socket, &messageSignal, sizeof(uint8_t), 0);
     if (sendResult == -1 || sendResult == 0) {
-        throw MessengerError(sendErrorMessage);
+        throw MessengerError(sendErrorMessage + std::strerror(errno));
     }
 
     // protocol specifies to send number of bytes in a long first
@@ -27,13 +29,13 @@ void Messenger::send(Message& message) {
     auto uint32_tSize = sizeof(uint32_t);
     sendResult = ::send(m_socket, &messageSizeTranslation, uint32_tSize, 0);
     if (sendResult != uint32_tSize) {
-        throw MessengerError(sendErrorMessage);
+        throw MessengerError(sendErrorMessage + std::strerror(errno));
     }
     std::size_t bytesSent = 0;
     while (bytesSent < messageSize) {
         sendResult = ::send(m_socket, &message.bytes[bytesSent], messageSize - bytesSent, 0);
         if (sendResult == -1) {
-            throw MessengerError(sendErrorMessage);
+            throw MessengerError(sendErrorMessage + std::strerror(errno));
         }
         bytesSent += sendResult;
     }
@@ -45,7 +47,7 @@ void Messenger::send(Message& message) {
     m_messageReceived = false;
 }
 
-const std::string recvErrorMessage = "could not receive mesage!";
+const std::string recvErrorMessage = "could not receive mesage! ";
 
 void Messenger::listen() {
     // receive messages
@@ -55,7 +57,7 @@ void Messenger::listen() {
         int recvResult = ::recv(m_socket, &typeBit, sizeof(uint8_t), 0);
 
         if (recvResult == -1) {
-            throw MessengerError(recvErrorMessage);
+            throw MessengerError(recvErrorMessage + std::strerror(errno));
         } else if (recvResult == 0) {
             // other messenger closed connection
             break;
@@ -78,7 +80,7 @@ void Messenger::listen() {
             auto uint32_tSize = sizeof(uint32_t);
             int recvResult = ::recv(m_socket, &messageSize, uint32_tSize, 0);
             if (recvResult == -1) {
-                throw MessengerError(recvErrorMessage);
+                throw MessengerError(recvErrorMessage + std::strerror(errno));
             } else if (recvResult == 0) {
                 // socket is closed
                 break;
@@ -93,7 +95,7 @@ void Messenger::listen() {
             while (bytesRead < messageSize) {
                 recvResult = ::recv(m_socket, &buffer[bytesRead], messageSize - bytesRead, 0);
                 if (recvResult == -1) {
-                    throw MessengerError(recvErrorMessage);
+                    throw MessengerError(recvErrorMessage + std::strerror(errno));
                 }
                 bytesRead += recvResult;
             }
@@ -110,7 +112,7 @@ void Messenger::listen() {
             uint8_t aknowledgmentSignal = AKNOWLEDGEMENT_SIGNAL;
             int sendResult = ::send(m_socket, &aknowledgmentSignal, sizeof(uint8_t), 0);
             if (sendResult == -1) {
-                throw MessengerError(recvErrorMessage);
+                throw MessengerError(recvErrorMessage + std::strerror(errno));
             }
         } else if (typeBit == AKNOWLEDGEMENT_SIGNAL) {
             m_messageReceived = true;

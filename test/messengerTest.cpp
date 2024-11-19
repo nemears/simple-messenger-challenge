@@ -44,3 +44,14 @@ TEST(MessengerTests, sendDataRace) {
     server.send(message);
     clientProcess.join();
 }
+
+TEST(MessengerTests, sendBigMessage) {
+    Server server;
+    Client client("127.0.0.1");
+    const std::size_t vectorSize = 10000000;
+    client.onMessage([vectorSize](Message& message) {
+        ASSERT_EQ(message.bytes.size(), vectorSize);
+    });
+    Message message = Message{ std::vector<uint8_t>(vectorSize) };
+    server.send(message);
+}
