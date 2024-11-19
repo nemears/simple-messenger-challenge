@@ -11,9 +11,8 @@ namespace  SimpleMessenger {
             int m_socket = -1;
             std::mutex m_socketMutex;
             std::condition_variable m_socketCv;
-            bool m_awaitingResponse = false;
-            bool m_waitingOnSend = false;
             bool m_shuttingDown = false;
+            bool m_messageReceived = false;
             struct AbstractFunctor {
                 virtual ~AbstractFunctor() {}
                 virtual void operator()(Message& message) const = 0;
@@ -37,7 +36,7 @@ namespace  SimpleMessenger {
                  };
                  m_onMessageHandler = std::make_unique<FunctorImpl>(function);
             }
-            // set socket (socket must already be closed!)
+            // set socket (socket must already be active)
             void setSocket(int socket) {
                 std::lock_guard<std::mutex> socketLock(m_socketMutex);
                 m_socket = socket;

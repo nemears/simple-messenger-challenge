@@ -6,8 +6,6 @@ using namespace SimpleMessenger;
 TEST(MessengerTests, shutdownTest) {
     Server server;
     Client client("127.0.0.1");
-    // client.shutdown();
-    // server.shutdown();
 }
 
 // TEST(MessengerTests, serverShutdownTest) {

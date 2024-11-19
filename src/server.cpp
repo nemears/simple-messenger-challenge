@@ -1,5 +1,4 @@
 #include "server.h"
-#include "message.h"
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netdb.h>
@@ -25,6 +24,13 @@ Server::Server() {
     // get socket
     m_serverSocket = socket(address->ai_family, address->ai_socktype, address->ai_protocol);
     if (m_serverSocket == -1) {
+        freeaddrinfo(address);
+        throw MessengerError(initializationMessage);
+    }
+
+    // allow immeadiate reconnection
+    int yes = 1;
+    if (setsockopt(m_serverSocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) == -1) {
         freeaddrinfo(address);
         throw MessengerError(initializationMessage);
     }
@@ -57,12 +63,6 @@ void Server::singleClient() {
         if (m_client == -1) {
             // log error and return
             m_shuttingDown = true;
-            return;
-        }
-
-        if (m_shuttingDown) {
-            // spoofed client
-            close(m_serverSocket);
             break;
         }
 
@@ -79,6 +79,7 @@ void Server::singleClient() {
         listen();
         m_client = -1;
     }
+    close(m_serverSocket);
 }
 
 const std::string spoofClientError = "Error on shutdown spoofing client";
