@@ -79,42 +79,48 @@ void Server::singleClient() {
         listen();
         m_client = -1;
     }
+    m_shuttingDown = true;
     close(m_serverSocket);
 }
 
 const std::string spoofClientError = "Error on shutdown spoofing client";
 
-void Server::shutdown() {
+Server::~Server() {
     Messenger::shutdown();
 
-    m_shuttingDown = true;
+    if (!m_shuttingDown) {
+        m_shuttingDown = true;
 
-    // send spoofed client
-    addrinfo hints;
-    addrinfo* address;
-    std::memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_UNSPEC; // don't care IPv4 or IPv6
-    hints.ai_socktype = SOCK_STREAM; // TCP stream sockets
-    hints.ai_flags = AI_PASSIVE; // fill in IP
-    if (getaddrinfo(0, m_port.c_str(), &hints, &address) != 0) {
-        throw MessengerError(spoofClientError);
-    }
+        // send spoofed client
+        addrinfo hints;
+        addrinfo* address;
+        std::memset(&hints, 0, sizeof hints);
+        hints.ai_family = AF_UNSPEC; // don't care IPv4 or IPv6
+        hints.ai_socktype = SOCK_STREAM; // TCP stream sockets
+        hints.ai_flags = AI_PASSIVE; // fill in IP
+        if (getaddrinfo(0, m_port.c_str(), &hints, &address) != 0) {
+            m_singleClientProcess.join();
+            return;
+        }
 
-    // get socket
-    int clientSocket = socket(address->ai_family, address->ai_socktype, address->ai_protocol);
-    if (clientSocket == -1) {
+        // get socket
+        int clientSocket = socket(address->ai_family, address->ai_socktype, address->ai_protocol);
+        if (clientSocket == -1) {
+            freeaddrinfo(address);
+            m_singleClientProcess.join();
+            return;
+        }
+
+        // connect
+        if (connect(clientSocket, address->ai_addr, address->ai_addrlen) == -1) {
+            freeaddrinfo(address);
+            m_singleClientProcess.join();
+            return;
+        }
+
         freeaddrinfo(address);
-        throw MessengerError(spoofClientError);
+        close(clientSocket);
     }
-
-    // connect
-    if (connect(clientSocket, address->ai_addr, address->ai_addrlen) == -1) {
-        freeaddrinfo(address);
-        throw MessengerError(spoofClientError);
-    }
-
-    freeaddrinfo(address);
-    close(clientSocket);
 
     m_singleClientProcess.join();
 }

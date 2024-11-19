@@ -8,10 +8,7 @@ namespace SimpleMessenger {
         private:
             std::thread m_listenProcess;
         public:
-            virtual ~Client() {
-                shutdown();
-            }
+            virtual ~Client();
             Client(std::string serverAddress);
-            void shutdown() override;
     };
 }

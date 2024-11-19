@@ -17,7 +17,7 @@ void Messenger::send(Message& message) {
     uint8_t messageSignal = MESSAGE_SIGNAL;
     int sendResult = ::send(m_socket, &messageSignal, sizeof(uint8_t), 0);
     if (sendResult == -1 || sendResult == 0) {
-        // TODO throw error
+        throw MessengerError(sendErrorMessage);
     }
 
     // protocol specifies to send number of bytes in a long first
@@ -38,6 +38,7 @@ void Messenger::send(Message& message) {
         bytesSent += sendResult;
     }
 
+    // wait for aknowledgment
     m_socketCv.wait(socketLock, [this] {
         return m_messageReceived;
     });
@@ -62,7 +63,7 @@ void Messenger::listen() {
 
         if (typeBit == SHUTDOWN_SIGNAL) {
             if (!m_shuttingDown) {
-                // send signal back to confirm shutdown / trigger poll for other messenger
+                // send signal back to confirm shutdown / trigger recv for other messenger
                 ::send(m_socket, &typeBit, sizeof(uint8_t), 0);
             }
 
@@ -72,53 +73,49 @@ void Messenger::listen() {
             break;
         } else if (typeBit == MESSAGE_SIGNAL) {
             // read message into object
-            Message message;
-            {
-                // get size of message
-                uint32_t messageSize = 0;
-                auto uint32_tSize = sizeof(uint32_t);
-                int recvResult = ::recv(m_socket, &messageSize, uint32_tSize, 0);
+            // get size of message
+            uint32_t messageSize = 0;
+            auto uint32_tSize = sizeof(uint32_t);
+            int recvResult = ::recv(m_socket, &messageSize, uint32_tSize, 0);
+            if (recvResult == -1) {
+                throw MessengerError(recvErrorMessage);
+            } else if (recvResult == 0) {
+                // socket is closed
+                break;
+            }
+
+            // run network number conversion just in case
+            messageSize = ntohl(messageSize);
+
+            // receive rest of message
+            std::vector<uint8_t> buffer(messageSize);
+            std::size_t bytesRead = 0;
+            while (bytesRead < messageSize) {
+                recvResult = ::recv(m_socket, &buffer[bytesRead], messageSize - bytesRead, 0);
                 if (recvResult == -1) {
                     throw MessengerError(recvErrorMessage);
-                } else if (recvResult == 0) {
-                    // socket is closed
-                    break;
                 }
-
-                // run network number conversion just in case
-                messageSize = ntohl(messageSize);
-
-                // receive rest of message
-                std::vector<uint8_t> buffer(messageSize);
-                std::size_t bytesRead = 0;
-                while (bytesRead < messageSize) {
-                    recvResult = ::recv(m_socket, &buffer[bytesRead], messageSize - bytesRead, 0);
-                    if (recvResult == -1) {
-                        throw MessengerError(recvErrorMessage);
-                    }
-                    bytesRead += recvResult;
-                }
-
-                // send aknowledgement
-                std::lock_guard<std::mutex> clientLock(m_socketMutex);
-                uint8_t aknowledgmentSignal = AKNOWLEDGEMENT_SIGNAL;
-                int sendResult = ::send(m_socket, &aknowledgmentSignal, sizeof(uint8_t), 0);
-                if (sendResult == -1) {
-                    throw MessengerError(recvErrorMessage);
-                
-                }
-                message = Message{ buffer };
+                bytesRead += recvResult;
             }
+
+            Message message = Message{ buffer };
 
             // run user defined handlers
             if (m_onMessageHandler) {
                 (*m_onMessageHandler)(message);
             }
+
+            // send aknowledgement
+            std::lock_guard<std::mutex> clientLock(m_socketMutex);
+            uint8_t aknowledgmentSignal = AKNOWLEDGEMENT_SIGNAL;
+            int sendResult = ::send(m_socket, &aknowledgmentSignal, sizeof(uint8_t), 0);
+            if (sendResult == -1) {
+                throw MessengerError(recvErrorMessage);
+            }
         } else if (typeBit == AKNOWLEDGEMENT_SIGNAL) {
             m_messageReceived = true;
             m_socketCv.notify_one();
         } else {
-            // TODO throw error
             throw MessengerError("Bad state got bad signal from other messenger!");
         }
     }

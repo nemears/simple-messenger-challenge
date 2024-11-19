@@ -42,6 +42,6 @@ namespace  SimpleMessenger {
                 m_socket = socket;
             }
             // close the socket (will terminate a listen call)
-            virtual void shutdown();
+            void shutdown();
     };
 }

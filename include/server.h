@@ -20,12 +20,7 @@ namespace SimpleMessenger {
             void singleClient();
         public:
             Server();
-            virtual ~Server() {
-                if (!m_shuttingDown) {
-                    shutdown();
-                }
-            }
-            void shutdown() override;
+            virtual ~Server();
             void send(Message& msg) override;
     };
 }

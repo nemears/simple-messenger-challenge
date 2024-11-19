@@ -8,12 +8,12 @@ TEST(MessengerTests, shutdownTest) {
     Client client("127.0.0.1");
 }
 
-// TEST(MessengerTests, serverShutdownTest) {
-//     Server server;
-//     Client client("127.0.0.1");
-//     server.shutdown();
-//     client.shutdown();
-// }
+TEST(MessengerTests, serverShutdownTest) {
+    Server server;
+    Client client("127.0.0.1");
+    server.shutdown();
+    client.shutdown();
+}
 
 std::atomic_bool receivedMessage = false;
 
@@ -26,8 +26,6 @@ TEST(MessengerTests, sendMessage) {
     Message message = Message::from("hello!");
     server.send(message);
     ASSERT_TRUE(receivedMessage) << "Failed to receive message from server!";
-    // client.shutdown();
-    // server.shutdown();
 }
 
 TEST(MessengerTests, sendDataRace) {
@@ -45,6 +43,4 @@ TEST(MessengerTests, sendDataRace) {
     Message message = Message::from("race");
     server.send(message);
     clientProcess.join();
-    // client.shutdown();
-    // server.shutdown();
 }

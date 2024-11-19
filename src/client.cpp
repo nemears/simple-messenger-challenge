@@ -3,7 +3,6 @@
 #include "server.h"
 #include <cstring>
 #include <netdb.h>
-#include <thread>
 
 using namespace SimpleMessenger;
 
@@ -60,7 +59,7 @@ Client::Client(std::string serverAddress) {
     m_listenProcess = std::thread(&Messenger::listen, this);
 }
 
-void Client::shutdown() {
+Client::~Client() {
     Messenger::shutdown();
     m_listenProcess.join();
 }
