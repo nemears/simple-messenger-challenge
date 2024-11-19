@@ -37,8 +37,8 @@ void Messenger::send(Message& message) {
     m_waitingOnSend = false;
 
     // wait for response from client
-    uint8_t responseBuffer = 0;
-    int receiveResult = ::recv(m_socket, &responseBuffer, sizeof(uint8_t), 0);
+    uint32_t responseBuffer = 0;
+    int receiveResult = ::recv(m_socket, &responseBuffer, uint32_tSize, 0);
     if (receiveResult == -1) {
         throw MessengerError(sendErrorMessage);
     }

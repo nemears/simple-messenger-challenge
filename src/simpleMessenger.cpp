@@ -20,7 +20,7 @@ void simpleMessenger(Messenger& messenger) {
         std::string buffer;
         std::getline(std::cin, buffer);
         if (buffer == "quit") {
-            messenger.shutdown();
+            // messenger.shutdown();
             std::lock_guard<std::mutex> logLck(logMtx);
             std::cout << "successfully shutdown" << std::endl;
             break;
