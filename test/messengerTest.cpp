@@ -70,3 +70,21 @@ TEST(MessengerTests, sendTwiceDifferentThreads) {
     server.send(message);
     sendProcess.join();
 }
+
+bool secondOnMessage = false;
+
+TEST(MessengerTests, overwriteOnMessageFunctor) {
+    Server server;
+    Client client("127.0.0.1");
+    client.onMessage([](Message& message) {
+        std::cout << "first on message triggered" << std::endl;        
+    });
+    Message message = Message::from("hello!");
+    server.send(message);
+    client.onMessage([](Message& message) {
+        secondOnMessage = true;        
+    });
+    server.send(message);
+    ASSERT_TRUE(secondOnMessage);
+}
+
