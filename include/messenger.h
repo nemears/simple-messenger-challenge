@@ -9,6 +9,7 @@ namespace  SimpleMessenger {
     class Messenger {
         private:
             int m_socket = -1;
+            std::mutex m_sendMutex;
             std::mutex m_socketMutex;
             std::condition_variable m_socketCv;
             bool m_shuttingDown = false;

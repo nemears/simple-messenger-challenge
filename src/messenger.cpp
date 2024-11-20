@@ -13,6 +13,7 @@ const std::string sendErrorMessage = "could not send message! ";
 
 void Messenger::send(Message& message) {
     // lock mutual exclusion for scope
+    std::lock_guard<std::mutex> sendLock(m_sendMutex);
     std::unique_lock<std::mutex> socketLock(m_socketMutex);
 
     // start message with signal showing this is a message
@@ -115,6 +116,7 @@ void Messenger::listen() {
                 throw MessengerError(recvErrorMessage + std::strerror(errno));
             }
         } else if (typeBit == AKNOWLEDGEMENT_SIGNAL) {
+            std::lock_guard<std::mutex> socketLck(m_socketMutex);
             m_messageReceived = true;
             m_socketCv.notify_one();
         } else {

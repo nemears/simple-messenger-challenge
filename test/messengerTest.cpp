@@ -55,3 +55,18 @@ TEST(MessengerTests, sendBigMessage) {
     Message message = Message{ std::vector<uint8_t>(vectorSize) };
     server.send(message);
 }
+
+TEST(MessengerTests, sendTwiceDifferentThreads) {
+    Server server;
+    Client client("127.0.0.1");
+    client.onMessage([](Message& message){
+        std::cout << message.string() << std::endl;
+    });
+    std::thread sendProcess([&server]{
+        Message message = Message::from("hello");
+        server.send(message);
+    });
+    Message message = Message::from("hi");
+    server.send(message);
+    sendProcess.join();
+}
